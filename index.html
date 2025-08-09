@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Tower Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #2c3e50;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        canvas {
+            border: 2px solid #34495e;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            cursor: crosshair;
+        }
+        
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1>Coin Tower Simulation</h1>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+    </div>
+
+    <script src="coinSimulation.js"></script>
+</body>
+</html>
