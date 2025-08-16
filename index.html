@@ -27,11 +27,40 @@
             cursor: crosshair;
         }
         
+        .hud {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            opacity: 0.9;
+        }
+        
+        button {
+            background: #1b2a4a;
+            color: #d7e2ff;
+            border: 1px solid #30436b;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            filter: brightness(1.1);
+        }
+        
+        .hint {
+            opacity: 0.75;
+        }
+        
     </style>
 </head>
 <body>
     <div id="gameContainer">
         <h1>Coin Tower Simulation</h1>
+        <div class="hud">
+            <button id="clearBtn">Clear</button>
+            <label><input type="checkbox" id="gravityChk" checked> Gravity</label>
+            <span class="hint">Click in top area to drop coins</span>
+        </div>
         <canvas id="gameCanvas" width="400" height="600"></canvas>
     </div>
 
