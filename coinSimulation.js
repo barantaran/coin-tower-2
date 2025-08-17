@@ -3,6 +3,7 @@ const CONFIG = {
   canvasWidth: 400,
   canvasHeight: 600,
   gravity: true,
+  debugMode: false,
   friction: 20,
   coinRadius: 15,
   coinOverlapChance: 0.3,
@@ -169,7 +170,7 @@ class Coin {
     g.addColorStop(0,'rgba(255,255,255,.6)'); g.addColorStop(1,'rgba(255,255,255,0)');
     ctx.fillStyle=g; ctx.beginPath(); ctx.arc(this.position.x,this.position.y,this.radius,0,Math.PI*2); ctx.fill();
     if (this.canOverlap){ ctx.globalAlpha=1; ctx.fillStyle='rgba(255,255,0,.8)'; ctx.beginPath(); ctx.arc(this.position.x, this.position.y - this.radius*.6, 3, 0, Math.PI*2); ctx.fill(); }
-    if (this.velocity.magnitude()>5){ ctx.globalAlpha=1; ctx.strokeStyle='red'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(this.position.x,this.position.y); const end=this.position.add(this.velocity.multiply(.1)); ctx.lineTo(end.x,end.y); ctx.stroke(); }
+    if (CONFIG.debugMode && this.velocity.magnitude()>5){ ctx.globalAlpha=1; ctx.strokeStyle='red'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(this.position.x,this.position.y); const end=this.position.add(this.velocity.multiply(.1)); ctx.lineTo(end.x,end.y); ctx.stroke(); }
     ctx.restore();
   }
 }
@@ -182,10 +183,10 @@ class CoinSimulation {
     
     // Auto-spawn properties
     this.autoSpawn = false;
-    this.autoSpawnInterval = 25; // Much faster spawning - 50ms between spawns
+    this.autoSpawnInterval = 35; // Much faster spawning - 50ms between spawns
     this.lastAutoSpawn = 0;
     this.autoSpawnComplete = false;
-    this.bottomThreshold = 0.9; // 90% down the table area
+    this.bottomThreshold = 0.8; // 90% down the table area
     const c=canvas;
     this.areas={
       get spawnAreaHeight(){ return c.height*CONFIG.spawnAreaHeightRatio; },
