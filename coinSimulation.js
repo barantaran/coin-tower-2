@@ -201,8 +201,9 @@ class CoinSimulation {
   }
   onClick(e){
     const r=this.canvas.getBoundingClientRect();
-    const x=e.clientX - r.left; const y=e.clientY - r.top;
-    if (y >= this.areas.spawnAreaHeight) return; // only in spawn area
+    // Allow clicking anywhere on the canvas, but spawn coins at random coordinates in spawn area
+    const x = Math.random() * this.canvas.width;
+    const y = Math.random() * this.areas.spawnAreaHeight;
     const coin=new Coin(x,y);
     // Set random stopping height within upper 2/3 of table area
     const tableAreaHeight = this.areas.tableHeight - this.areas.spawnAreaHeight;
@@ -333,7 +334,7 @@ class CoinSimulation {
     ctx.fillStyle='rgba(70,70,70,.8)'; ctx.fillRect(0, A.floorTop, c.width, 5);
     ctx.fillStyle='rgba(0,0,0,.6)'; ctx.font='12px system-ui'; ctx.textAlign='center';
     ctx.fillText('SPAWN AREA', c.width/2, A.spawnAreaHeight/2);
-    ctx.fillText('(Click to spawn coins)', c.width/2, A.spawnAreaHeight/2 + 15);
+    ctx.fillText('(Click anywhere to spawn coins)', c.width/2, A.spawnAreaHeight/2 + 15);
     const tableMid=A.spawnAreaHeight + (c.height*CONFIG.tableHeightRatio)/2; ctx.fillText('TABLE', c.width/2, tableMid);
     ctx.fillText('FALLING SPACE', c.width/2, A.tableHeight + A.fallingSpaceHeight/2);
     ctx.fillText('FLOOR', c.width/2, A.floorTop + A.floorHeight/2);
