@@ -54,6 +54,8 @@ class Coin {
     this.isFalling=false;              // falling after table edge
     this.isSpawnAreaFalling=true;      // start falling immediately in spawn area
     this.justLanded=false;             // used to soften initial neighbor push
+    // random stopping height within table area
+    this.randomStoppingHeight = 0;     // will be set when coin is created
   }
   randColor(){ return ['#f39c12','#f1c40f','#e67e22'][Math.floor(Math.random()*3)]; }
   update(dt, canvas, tol, areas, useGravity){
@@ -62,8 +64,8 @@ class Coin {
       if (useGravity) this.velocity.y += 300*dt;
       this.velocity.y = Math.max(0, this.velocity.y);
     }
-    // landed on table from spawn area
-    if (this.isSpawnAreaFalling && this.position.y >= areas.spawnAreaHeight){
+    // landed on table from spawn area at random height
+    if (this.isSpawnAreaFalling && this.position.y >= this.randomStoppingHeight){
       this.isSpawnAreaFalling=false;
       this.velocity.y = Math.min(this.velocity.y*0.3, 50);
       this.isResting=false; this.restCounter=0;
@@ -84,9 +86,9 @@ class Coin {
     this.velocity.y = Math.max(0, this.velocity.y); // no upward motion
     this.position = this.position.add(this.velocity.multiply(dt));
 
-    // forbid coins to move into spawn area once they left it
-    if (!this.isSpawnAreaFalling && this.position.y < areas.spawnAreaHeight + this.radius) {
-      this.position.y = areas.spawnAreaHeight + this.radius;
+    // forbid coins to move above their random stopping height once they've landed
+    if (!this.isSpawnAreaFalling && this.position.y < this.randomStoppingHeight + this.radius) {
+      this.position.y = this.randomStoppingHeight + this.radius;
       if (this.velocity.y < 0) this.velocity.y = 0;
     }
 
@@ -194,6 +196,10 @@ class CoinSimulation {
     const x=e.clientX - r.left; const y=e.clientY - r.top;
     if (y >= this.areas.spawnAreaHeight) return; // only in spawn area
     const coin=new Coin(x,y);
+    // Set random stopping height within upper 2/3 of table area
+    const tableAreaHeight = this.areas.tableHeight - this.areas.spawnAreaHeight;
+    const upperTwoThirdsHeight = tableAreaHeight * 0.5;
+    coin.randomStoppingHeight = this.areas.spawnAreaHeight + Math.random() * upperTwoThirdsHeight;
     // FIX: angle range so +Y (downwards in canvas)
     const angle = Math.random()*Math.PI; // 0..π gives positive Y
     const speed = Math.random()*(CONFIG.maxInitialSpeed-CONFIG.minInitialSpeed)+CONFIG.minInitialSpeed;
@@ -234,9 +240,8 @@ class CoinSimulation {
     this.coins = this.coins.filter(c=>!c.isOffscreen(this.canvas));
     for (let i=0;i<this.coins.length;i++) for (let j=i+1;j<this.coins.length;j++){
       const a=this.coins[i], b=this.coins[j];
-      // allow collision resolution always (even in spawn area), 
-      // except when coin already falling off table (ignore physics then)
-      if (a.isFalling||b.isFalling) continue;
+      // skip collision resolution when coins are falling (either in spawn area or off table)
+      if (a.isFalling||b.isFalling||a.isSpawnAreaFalling||b.isSpawnAreaFalling) continue;
       if (a.isCollidingWith(b)) a.resolveCollision(b,this.tol);
     }
     for (const c of this.coins){ c.draw(ctx); }
