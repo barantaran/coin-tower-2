@@ -23,6 +23,7 @@ const CONFIG = {
   pushForce: 100,
   chainPushRadius: 60,
   chainPushReduction: 0.5,
+  overlapAmountRange: [0.1, 0.3], // min–max factor for overlap randomness
 };
 
 class Vector2 {
@@ -45,6 +46,10 @@ class Coin {
     this.isResting=false; this.restCounter=0;
     this.pushForce=0.5;
     this.canOverlap=Math.random()<CONFIG.coinOverlapChance;
+    // uniform border thickness for all coins
+    this.borderThickness = 2;
+    // fixed overlap: always allow 1/3 diameter overlap
+    this.overlapOffset= ( (this.radius*2 - this.radius*2/3) ) / (this.radius*2);
     // falling state machine
     this.isFalling=false;              // falling after table edge
     this.isSpawnAreaFalling=true;      // start falling immediately in spawn area
@@ -79,6 +84,12 @@ class Coin {
     this.velocity.y = Math.max(0, this.velocity.y); // no upward motion
     this.position = this.position.add(this.velocity.multiply(dt));
 
+    // forbid coins to move into spawn area once they left it
+    if (!this.isSpawnAreaFalling && this.position.y < areas.spawnAreaHeight + this.radius) {
+      this.position.y = areas.spawnAreaHeight + this.radius;
+      if (this.velocity.y < 0) this.velocity.y = 0;
+    }
+
     this.handleBoundaries(canvas, areas);
 
     if (!this.isSpawnAreaFalling && !this.isFalling){
@@ -105,14 +116,29 @@ class Coin {
     const d=this.position.distance(o.position); const minD=this.radius+o.radius; if (d>=minD||d===0) return;
     const normal = o.position.subtract(this.position).normalize();
     const overlap = minD - d; const canOverlap = this.canOverlap || o.canOverlap;
-    if (!canOverlap && overlap > tol.pushForceDeadzone){
-      const sep = normal.multiply(overlap*0.5); this.position=this.position.subtract(sep); o.position=o.position.add(sep);
+    if (canOverlap){
+      // fixed overlap: allow always one third of diameter penetration
+      const allowed=minD - (this.radius*2/3);
+      if (d>=allowed) return;
     }
+    if (canOverlap){
+      // Let overlappable coins keep sinking with only small correction
+      if (overlap > 0){
+        const sep = normal.multiply(overlap*0.1);
+        this.position=this.position.subtract(sep);
+        o.position=o.position.add(sep);
+      }
+    } else if (overlap > tol.pushForceDeadzone){
+      const sep = normal.multiply(overlap*0.5);
+      this.position=this.position.subtract(sep);
+      o.position=o.position.add(sep);
+    }
+
     const relV = o.velocity.subtract(this.velocity);
     const vN = relV.x*normal.x + relV.y*normal.y;
     if (vN>0 || Math.abs(vN)<tol.minForceThreshold) return;
     const restitution = canOverlap ? 0.05 : 0.4;
-    const impulseMult = canOverlap ? 0.1 : tol.forceReductionFactor;
+    const impulseMult = canOverlap ? 0.05 : tol.forceReductionFactor;
     let j = -(1+restitution)*vN*impulseMult; j /= (1/this.mass + 1/o.mass);
     if (Math.abs(j) > tol.minForceThreshold){
       const J = normal.multiply(j);
@@ -134,7 +160,9 @@ class Coin {
     ctx.save();
     ctx.fillStyle='rgba(0,0,0,.2)'; ctx.beginPath(); ctx.arc(this.position.x+2,this.position.y+2,this.radius,0,Math.PI*2); ctx.fill();
     ctx.fillStyle=this.color; ctx.beginPath(); ctx.arc(this.position.x,this.position.y,this.radius,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle=this.canOverlap?'#1a252f':'#2c3e50'; ctx.lineWidth=this.canOverlap?3:2; ctx.stroke();
+    ctx.strokeStyle=this.canOverlap?'#1a252f':'#2c3e50'; 
+    ctx.lineWidth=this.borderThickness; 
+    ctx.stroke();
     const g=ctx.createRadialGradient(this.position.x - this.radius*0.3, this.position.y - this.radius*0.3, 0, this.position.x, this.position.y, this.radius);
     g.addColorStop(0,'rgba(255,255,255,.6)'); g.addColorStop(1,'rgba(255,255,255,0)');
     ctx.fillStyle=g; ctx.beginPath(); ctx.arc(this.position.x,this.position.y,this.radius,0,Math.PI*2); ctx.fill();
@@ -206,7 +234,9 @@ class CoinSimulation {
     this.coins = this.coins.filter(c=>!c.isOffscreen(this.canvas));
     for (let i=0;i<this.coins.length;i++) for (let j=i+1;j<this.coins.length;j++){
       const a=this.coins[i], b=this.coins[j];
-      if (a.isSpawnAreaFalling||b.isSpawnAreaFalling||a.isFalling||b.isFalling) continue;
+      // allow collision resolution always (even in spawn area), 
+      // except when coin already falling off table (ignore physics then)
+      if (a.isFalling||b.isFalling) continue;
       if (a.isCollidingWith(b)) a.resolveCollision(b,this.tol);
     }
     for (const c of this.coins){ c.draw(ctx); }
