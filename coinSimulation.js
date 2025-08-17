@@ -179,6 +179,13 @@ class CoinSimulation {
     this.canvas=canvas; this.ctx=canvas.getContext('2d');
     this.coins=[]; this.lastTime=0; this.useGravity=CONFIG.gravity;
     this.canvas.width=CONFIG.canvasWidth; this.canvas.height=CONFIG.canvasHeight;
+    
+    // Auto-spawn properties
+    this.autoSpawn = false;
+    this.autoSpawnInterval = 25; // Much faster spawning - 50ms between spawns
+    this.lastAutoSpawn = 0;
+    this.autoSpawnComplete = false;
+    this.bottomThreshold = 0.9; // 90% down the table area
     const c=canvas;
     this.areas={
       get spawnAreaHeight(){ return c.height*CONFIG.spawnAreaHeightRatio; },
@@ -198,7 +205,7 @@ class CoinSimulation {
     const coin=new Coin(x,y);
     // Set random stopping height within upper 2/3 of table area
     const tableAreaHeight = this.areas.tableHeight - this.areas.spawnAreaHeight;
-    const upperTwoThirdsHeight = tableAreaHeight * 0.5;
+    const upperTwoThirdsHeight = tableAreaHeight * 0.33;
     coin.randomStoppingHeight = this.areas.spawnAreaHeight + Math.random() * upperTwoThirdsHeight;
     // FIX: angle range so +Y (downwards in canvas)
     const angle = Math.random()*Math.PI; // 0..π gives positive Y
@@ -232,8 +239,74 @@ class CoinSimulation {
       }
     }
   }
+  
+  spawnCoin(x, y) {
+    const coin = new Coin(x, y);
+    // Set random stopping height within upper 2/3 of table area
+    const tableAreaHeight = this.areas.tableHeight - this.areas.spawnAreaHeight;
+    const upperTwoThirdsHeight = tableAreaHeight * 0.33;
+    coin.randomStoppingHeight = this.areas.spawnAreaHeight + Math.random() * upperTwoThirdsHeight;
+    // Random angle and speed
+    const angle = Math.random() * Math.PI; // 0..π gives positive Y
+    const speed = Math.random() * (CONFIG.maxInitialSpeed - CONFIG.minInitialSpeed) + CONFIG.minInitialSpeed;
+    coin.velocity = new Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    coin.justLanded = true;
+    this.coins.push(coin);
+    this.applyNeighborPush(coin);
+    return coin;
+  }
+  
+  autoSpawnCoin() {
+    // Spawn at center of spawn area only
+    const x = this.canvas.width / 2;
+    const y = this.areas.spawnAreaHeight / 2;
+    return this.spawnCoin(x, y);
+  }
+  
+  checkBottomReached() {
+    if (this.autoSpawnComplete) return true;
+    
+    const tableAreaHeight = this.areas.tableHeight - this.areas.spawnAreaHeight;
+    const bottomThresholdY = this.areas.spawnAreaHeight + (tableAreaHeight * this.bottomThreshold);
+    
+    for (const coin of this.coins) {
+      // Check if any coin that has landed on the table is near the bottom
+      if (!coin.isSpawnAreaFalling && !coin.isFalling && 
+          coin.position.y + coin.radius >= bottomThresholdY) {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  startAutoSpawn() {
+    this.autoSpawn = true;
+    this.autoSpawnComplete = false;
+    this.lastAutoSpawn = performance.now();
+  }
+  
+  stopAutoSpawn() {
+    this.autoSpawn = false;
+  }
   animate(t){
     const dt=Math.min((t-this.lastTime)/1000, 1/30); this.lastTime=t;
+    
+    // Auto-spawn logic
+    if (this.autoSpawn && !this.autoSpawnComplete) {
+      // Check if we should spawn a new coin
+      if (t - this.lastAutoSpawn >= this.autoSpawnInterval) {
+        this.autoSpawnCoin();
+        this.lastAutoSpawn = t;
+      }
+      
+      // Check if any coin has reached the bottom threshold
+      if (this.checkBottomReached()) {
+        this.autoSpawn = false;
+        this.autoSpawnComplete = true;
+        console.log('Auto-spawn complete! A coin has reached near the bottom of the table.');
+      }
+    }
+    
     const ctx=this.ctx; ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
     this.drawAreas();
     for (const c of this.coins){ c.update(dt,this.canvas,this.tol,this.areas,this.useGravity); }
@@ -245,6 +318,7 @@ class CoinSimulation {
       if (a.isCollidingWith(b)) a.resolveCollision(b,this.tol);
     }
     for (const c of this.coins){ c.draw(ctx); }
+    
     requestAnimationFrame(this.animate.bind(this));
   }
   drawAreas(){
@@ -270,9 +344,34 @@ window.addEventListener('load', ()=>{
   const canvas=document.getElementById('gameCanvas');
   sim=new CoinSimulation(canvas);
   requestAnimationFrame(sim.animate.bind(sim));
+  
+  // Start auto-spawn immediately on load
+  sim.startAutoSpawn();
+  
   // UI
   const clearBtn=document.getElementById('clearBtn');
+  const autoSpawnBtn=document.getElementById('autoSpawnBtn');
   const gravityChk=document.getElementById('gravityChk');
-  clearBtn.addEventListener('click',()=>{ sim.coins.length=0; });
+  
+  // Update button text to reflect that auto-spawn is already running
+  autoSpawnBtn.textContent = 'Stop Auto-Spawn';
+  
+  clearBtn.addEventListener('click',()=>{ 
+    sim.coins.length=0; 
+    sim.stopAutoSpawn();
+    sim.autoSpawnComplete = false;
+    autoSpawnBtn.textContent = 'Start Auto-Spawn';
+  });
+  
+  autoSpawnBtn.addEventListener('click',()=>{
+    if (sim.autoSpawn) {
+      sim.stopAutoSpawn();
+      autoSpawnBtn.textContent = 'Start Auto-Spawn';
+    } else {
+      sim.startAutoSpawn();
+      autoSpawnBtn.textContent = 'Stop Auto-Spawn';
+    }
+  });
+  
   gravityChk.addEventListener('change',()=>{ sim.useGravity = gravityChk.checked; });
 });
