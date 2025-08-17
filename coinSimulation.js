@@ -1,7 +1,10 @@
 // ==== CONFIGURATION ====
 const CONFIG = {
-  canvasWidth: 400,
-  canvasHeight: 600,
+  canvasWidth: 400,  // Base width for calculations
+  canvasHeight: 600, // Base height for calculations
+  aspectRatio: 600/400, // Height/Width ratio (1.5 - always vertical)
+  minWidth: 300,     // Minimum canvas width
+  maxWidth: 500,     // Maximum canvas width
   gravity: true,
   debugMode: false,
   friction: 20,
@@ -179,7 +182,9 @@ class CoinSimulation {
   constructor(canvas){
     this.canvas=canvas; this.ctx=canvas.getContext('2d');
     this.coins=[]; this.lastTime=0; this.useGravity=CONFIG.gravity;
-    this.canvas.width=CONFIG.canvasWidth; this.canvas.height=CONFIG.canvasHeight;
+    
+    // Initialize responsive canvas
+    this.setupResponsiveCanvas();
     
     // Auto-spawn properties
     this.autoSpawn = false;
@@ -198,6 +203,78 @@ class CoinSimulation {
     };
     this.tol = CONFIG.tolerance;
     canvas.addEventListener('click', e=>this.onClick(e));
+  }
+  
+  setupResponsiveCanvas() {
+    // Calculate and set initial canvas size
+    this.updateCanvasSize();
+    
+    // Set up resize listener
+    window.addEventListener('resize', () => this.updateCanvasSize());
+  }
+  
+  calculateResponsiveSize() {
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate available space (accounting for padding and UI)
+    const availableWidth = Math.min(viewportWidth * 0.9, CONFIG.maxWidth);
+    const availableHeight = viewportHeight * 0.8;
+    
+    // Calculate width based on available space but maintain vertical aspect ratio
+    let canvasWidth = Math.max(CONFIG.minWidth, Math.min(availableWidth, CONFIG.maxWidth));
+    let canvasHeight = canvasWidth * CONFIG.aspectRatio;
+    
+    // If height exceeds available space, scale down proportionally
+    if (canvasHeight > availableHeight) {
+      canvasHeight = availableHeight;
+      canvasWidth = canvasHeight / CONFIG.aspectRatio;
+      
+      // Ensure width doesn't go below minimum
+      if (canvasWidth < CONFIG.minWidth) {
+        canvasWidth = CONFIG.minWidth;
+        canvasHeight = canvasWidth * CONFIG.aspectRatio;
+      }
+    }
+    
+    return {
+      width: Math.floor(canvasWidth),
+      height: Math.floor(canvasHeight)
+    };
+  }
+  
+  updateCanvasSize() {
+    const { width, height } = this.calculateResponsiveSize();
+    
+    // Only update if size has changed significantly (avoid unnecessary updates)
+    if (Math.abs(this.canvas.width - width) > 5 || Math.abs(this.canvas.height - height) > 5) {
+      const oldWidth = this.canvas.width;
+      const oldHeight = this.canvas.height;
+      
+      // Update canvas dimensions
+      this.canvas.width = width;
+      this.canvas.height = height;
+      
+      // Scale existing coin positions to new canvas size
+      this.scaleCoins(oldWidth, oldHeight, width, height);
+    }
+  }
+  
+  scaleCoins(oldWidth, oldHeight, newWidth, newHeight) {
+    if (this.coins.length === 0) return;
+    
+    const scaleX = newWidth / oldWidth;
+    const scaleY = newHeight / oldHeight;
+    
+    // Scale all coin positions and velocities
+    for (const coin of this.coins) {
+      coin.position.x *= scaleX;
+      coin.position.y *= scaleY;
+      coin.velocity.x *= scaleX;
+      coin.velocity.y *= scaleY;
+      coin.randomStoppingHeight *= scaleY;
+    }
   }
   onClick(e){
     const r=this.canvas.getBoundingClientRect();

@@ -25,6 +25,17 @@
             background-color: #ecf0f1;
             border-radius: 10px;
             cursor: crosshair;
+            max-width: 90vw;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+        }
+        
+        /* Ensure container doesn't overflow */
+        #gameContainer {
+            max-width: 100vw;
+            max-height: 100vh;
+            overflow: hidden;
         }
         
         .hud {
