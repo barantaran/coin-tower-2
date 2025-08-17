@@ -201,9 +201,9 @@ class CoinSimulation {
   }
   onClick(e){
     const r=this.canvas.getBoundingClientRect();
-    // Allow clicking anywhere on the canvas, but spawn coins at random coordinates in spawn area
+    // Allow clicking anywhere on the canvas, but spawn coins above the top of the canvas
     const x = Math.random() * this.canvas.width;
-    const y = Math.random() * this.areas.spawnAreaHeight;
+    const y = -CONFIG.coinRadius - Math.random() * 100; // Spawn above canvas with some randomness
     const coin=new Coin(x,y);
     // Set random stopping height within upper 2/3 of table area
     const tableAreaHeight = this.areas.tableHeight - this.areas.spawnAreaHeight;
