@@ -278,17 +278,17 @@ class CoinSimulation {
   }
   onClick(e){
     const r=this.canvas.getBoundingClientRect();
-    // Allow clicking anywhere on the canvas, but spawn coins above the top of the canvas
-    const x = Math.random() * this.canvas.width;
-    const y = -CONFIG.coinRadius - Math.random() * 100; // Spawn above canvas with some randomness
+    // Spawn coins in the upper left corner
+    const x = CONFIG.coinRadius + Math.random() * 50; // Small area in upper left
+    const y = CONFIG.coinRadius + Math.random() * 50; // Small area in upper left
     const coin=new Coin(x,y);
     // Set random stopping height within upper 2/3 of table area
     const tableAreaHeight = this.areas.tableHeight - this.areas.spawnAreaHeight;
     const upperTwoThirdsHeight = tableAreaHeight * 0.33;
     coin.randomStoppingHeight = this.areas.spawnAreaHeight + Math.random() * upperTwoThirdsHeight;
-    // FIX: angle range so +Y (downwards in canvas)
-    const angle = Math.random()*Math.PI; // 0..π gives positive Y
-    const speed = Math.random()*(CONFIG.maxInitialSpeed-CONFIG.minInitialSpeed)+CONFIG.minInitialSpeed;
+    // Random vector pointing to the right (angle between -30° to +30° from horizontal right)
+    const angle = (Math.random() - 0.5) * Math.PI/3; // -π/6 to +π/6 (-30° to +30°)
+    const speed = Math.random() * 300 + 50; // Speed range from 50 to 200 for more variety
     coin.velocity = new Vector2(Math.cos(angle)*speed, Math.sin(angle)*speed);
     coin.justLanded=true; // soften initial neighbor push
     this.coins.push(coin);
